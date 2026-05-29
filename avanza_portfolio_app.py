@@ -14,6 +14,7 @@ st.write(
 uploaded_file = st.file_uploader("Upload your Avanza CSV file", type=["csv"])
 
 def normalize_columns(df):
+    df = df.loc[:, ~df.columns.duplicated()]
     """Try to map common Avanza/English/Swedish column names into standard names."""
     column_map = {}
 
