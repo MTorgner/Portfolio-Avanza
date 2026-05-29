@@ -17,9 +17,9 @@ def normalize_columns(df):
     """Try to map common Avanza/English/Swedish column names into standard names."""
     column_map = {}
 
-    possible_name_cols = ["Name", "Namn", "Värdepapper", "Instrument", "Security"]
-    possible_value_cols = ["Market Value", "Marknadsvärde", "Värde", "Value", "Belopp"]
-    possible_qty_cols = ["Quantity", "Antal", "Qty"]
+    possible_name_cols = ["Name", "Namn", "Kortnamn", "Värdepapper", "Instrument", "Security"]
+    possible_value_cols = ["Market Value", "Marknadsvärde", "Värde", "Value", "Belopp", "Marknadsvarde"]
+    possible_qty_cols = ["Quantity", "Antal", "Volym", "Qty"]
     possible_sector_cols = ["Sector", "Sektor"]
     possible_country_cols = ["Country", "Land"]
     possible_type_cols = ["Type", "Typ", "Instrumenttyp"]
@@ -92,6 +92,30 @@ if uploaded_file is not None:
     col3.metric("Top 3 Weight", f"{top_3_weight:.1%}")
     col4.metric("Top 5 Weight", f"{top_5_weight:.1%}")
 
+    st.subheader("Portfolio Health Score")
+
+    score = 100
+
+    if largest_holding["Weight"] > 0.25:
+        score -= 20
+    if top_3_weight > 0.50:
+        score -= 20
+    if top_5_weight > 0.70:
+        score -= 15
+    if len(df) < 8:
+        score -= 15
+
+    score = max(score, 0)
+
+    st.metric("Portfolio Score", f"{score}/100")
+
+    if score >= 80:
+        st.success("Strong diversification profile.")
+    elif score >= 60:
+        st.warning("Moderate risk. Some concentration issues to review.")
+    else:
+        st.error("High concentration risk. Portfolio needs closer review.")
+
     st.subheader("Top Holdings")
     display_df = top_holdings.copy()
     display_df["Weight"] = display_df["Weight"].map(lambda x: f"{x:.2%}")
@@ -125,6 +149,21 @@ if uploaded_file is not None:
     plt.xticks(rotation=45, ha="right")
     st.pyplot(fig)
 
+    st.subheader("Portfolio Allocation")
+    pie_data = top_holdings.head(8).copy()
+    other_value = top_holdings.iloc[8:]["Market Value"].sum()
+
+    if other_value > 0:
+        pie_data = pd.concat([
+            pie_data,
+            pd.DataFrame([{"Name": "Other", "Market Value": other_value}])
+        ])
+
+    fig2, ax2 = plt.subplots()
+    ax2.pie(pie_data["Market Value"], labels=pie_data["Name"], autopct="%1.1f%%")
+    ax2.set_title("Portfolio Allocation")
+    st.pyplot(fig2)
+
     if "Sector" in df.columns:
         st.subheader("Sector Allocation")
         sector_df = df.groupby("Sector", as_index=False)["Market Value"].sum()
@@ -136,6 +175,36 @@ if uploaded_file is not None:
         country_df = df.groupby("Country", as_index=False)["Market Value"].sum()
         country_df["Weight"] = country_df["Market Value"] / total_value
         st.dataframe(country_df.sort_values("Weight", ascending=False), use_container_width=True)
+
+    st.subheader("Portfolio Commentary")
+
+    commentary = []
+
+    commentary.append(
+        f"Your largest holding is {largest_holding['Name']} at {largest_holding['Weight']:.1%} of the portfolio."
+    )
+
+    if top_3_weight > 0.50:
+        commentary.append("Your top 3 holdings make up more than half of your portfolio, which suggests concentration risk.")
+    else:
+        commentary.append("Your top 3 holdings are not overly concentrated based on the 50% rule.")
+
+    if top_5_weight > 0.70:
+        commentary.append("Your top 5 holdings represent a large share of the portfolio, so performance may depend heavily on only a few positions.")
+    else:
+        commentary.append("Your top 5 holdings do not appear extremely concentrated based on the 70% rule.")
+
+    if len(df) < 8:
+        commentary.append("You have a relatively small number of holdings, so diversification may be limited.")
+    else:
+        commentary.append("You have a reasonable number of holdings for basic diversification.")
+
+    commentary.append(
+        "This tool does not give buy or sell recommendations, but it helps you identify areas worth reviewing."
+    )
+
+    for line in commentary:
+        st.write("- " + line)
 
     st.subheader("Plain-English Portfolio Summary")
     summary = f"""
@@ -158,3 +227,4 @@ if uploaded_file is not None:
 
 else:
     st.info("Upload a CSV file to begin.")
+
