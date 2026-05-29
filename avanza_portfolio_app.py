@@ -57,10 +57,10 @@ def clean_numeric(series):
 
 if uploaded_file is not None:
     try:
-        df = pd.read_csv(uploaded_file)
+        df = pd.read_csv(uploaded_file, sep=";")
     except UnicodeDecodeError:
         uploaded_file.seek(0)
-        df = pd.read_csv(uploaded_file, encoding="latin1")
+        df = pd.read_csv(uploaded_file, encoding="latin1", sep=";")
 
     df = normalize_columns(df)
 
