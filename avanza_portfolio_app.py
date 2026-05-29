@@ -66,7 +66,8 @@ if uploaded_file is not None:
     df = normalize_columns(df)
 
     st.subheader("Uploaded Data Preview")
-    st.dataframe(df.head(20), use_container_width=True)
+    st.write("Columns found:")
+st.write(list(df.columns))
 
     if "Name" not in df.columns or "Market Value" not in df.columns:
         st.error(
